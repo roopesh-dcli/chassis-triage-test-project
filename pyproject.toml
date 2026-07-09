@@ -7,7 +7,11 @@ name = "chassis-triage"
 version = "0.1.0"
 description = "DCLI multi-agent chassis damage triage — PoC"
 requires-python = ">=3.11"
-dependencies = ["pydantic>=2.6"]
+dependencies = [
+    "pydantic>=2.6",
+    "langgraph>=0.2.60",
+    "langgraph-checkpoint-sqlite>=2.0",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
