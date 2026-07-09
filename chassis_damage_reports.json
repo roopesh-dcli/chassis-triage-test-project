@@ -1,0 +1,904 @@
+{
+  "dataset": "DCLI Chassis Triage PoC — Synthetic Damage Reports",
+  "version": "1.0",
+  "generated": "2026-07-09",
+  "note": "Synthetic data for a take-home assessment. All chassis IDs, depots, names, and incidents are fabricated. This is a TEXT-ONLY dataset — no image files are included. Field dictionary is in field_dictionary below.",
+  "field_dictionary": {
+    "report_id": "Unique report identifier.",
+    "received_at": "ISO 8601 timestamp the report entered the queue.",
+    "depot": {
+      "code": "DCLI depot / pool location code.",
+      "name": "Human-readable depot name.",
+      "city_state": "City, State."
+    },
+    "reported_by": {
+      "name": "Person who filed the report.",
+      "role": "Their role (mechanic, gate agent, driver, telematics-system, etc.)."
+    },
+    "chassis": {
+      "id": "Reporting mark + number.",
+      "type": "Chassis configuration.",
+      "model_year": "Year of manufacture.",
+      "in_service_years": "Years the unit has been in service.",
+      "est_replacement_value_usd": "Rough current replacement/market value, used only for retire-vs-repair judgment.",
+      "last_dot_inspection": "Date of last annual DOT/FMCSA inspection."
+    },
+    "damage_description": "Free-text narrative from the depot. Intended input for the Damage Assessor. May be vague, conflicting, or incomplete on purpose.",
+    "incident_context": "How the damage is believed to have occurred.",
+    "roadability_data": {
+      "_comment": "Structured, machine-checkable fields. These are the deterministic inputs for the Roadability Checker. Do NOT send these to an LLM to 'decide' roadability — check them in code against the OOS rules.",
+      "tires": "Array of {position, tread_32nds, condition}. FMCSA out-of-service (OOS) if any non-steer tire tread < 2/32 in, or condition is flat / exposed_cords / sidewall_bulge / audible_leak.",
+      "brakes_defective_pct": "Percent of brakes defective or out of adjustment. OOS if >= 20%.",
+      "required_lamps_inoperative": "Array of required lamps not working (tail, brake, turn, clearance, marker). Any inoperative required lamp is a defect; OOS at night / for dispatch.",
+      "frame_crack": "Boolean. Cracked or broken frame member = OOS.",
+      "suspension_defect": "Boolean. Broken/missing spring leaf, broken hanger, etc. = OOS.",
+      "kingpin_or_coupler_defect": "Boolean. Upper-coupler / kingpin wear beyond limit = OOS.",
+      "airline_leak": "Boolean. Cut/chafed/leaking brake airline = OOS.",
+      "wheel_or_fastener_defect": "Boolean. Cracked wheel, or broken/missing lug studs. NOTE: merely loose (not broken) fasteners are a defect to be corrected but are not automatically OOS once retorqued.",
+      "container_securing_defect": "Boolean. Broken twist-lock / rear pin. NOT a DOT roadability item on an empty move, but the unit is not fit to carry a container until repaired.",
+      "additional_signals": "Some reports may carry extra ad-hoc fields beyond those above (e.g. abs_fault_active, abs_warning_lamp). These are intentional: they can conflict with the written narrative and are a legitimate trigger for human review. They are not part of the core DOT out-of-service rule set."
+    },
+    "reporter_confidence": "Reporter's own confidence in their assessment, low/medium/high. A low value or internally conflicting data is a legitimate reason to route to human review even when roadability and cost look fine.",
+    "attachments": "This is a text-only dataset. No image or photo files are provided; the reports are self-contained in the fields above. If you want to demonstrate a vision/tool call, stub it."
+  },
+  "reports": [
+    {
+      "report_id": "DMG-2026-0001",
+      "received_at": "2026-07-01T08:12:00Z",
+      "depot": {
+        "code": "SAV-01",
+        "name": "Savannah Pooling Point",
+        "city_state": "Savannah, GA"
+      },
+      "reported_by": {
+        "name": "Marcus Bell",
+        "role": "yard mechanic"
+      },
+      "chassis": {
+        "id": "DCLZ 402318",
+        "type": "40' tandem",
+        "model_year": 2019,
+        "in_service_years": 7,
+        "est_replacement_value_usd": 12500,
+        "last_dot_inspection": "2026-03-14"
+      },
+      "damage_description": "Cosmetic scuffing on driver-side rail from a curb strike. One rear mud flap torn about halfway across. Everything else looks normal on walk-around.",
+      "incident_context": "Minor curb contact during yard repositioning.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 8,
+            "condition": "ok"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 7,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 9,
+            "condition": "ok"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 8,
+            "condition": "ok"
+          }
+        ],
+        "brakes_defective_pct": 0,
+        "required_lamps_inoperative": [],
+        "frame_crack": false,
+        "suspension_defect": false,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": false,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false
+      },
+      "reporter_confidence": "high"
+    },
+    {
+      "report_id": "DMG-2026-0002",
+      "received_at": "2026-07-01T10:47:00Z",
+      "depot": {
+        "code": "CHS-02",
+        "name": "Charleston North Depot",
+        "city_state": "Charleston, SC"
+      },
+      "reported_by": {
+        "name": "Denise Okafor",
+        "role": "gate agent"
+      },
+      "chassis": {
+        "id": "DCLZ 388105",
+        "type": "20-40 combo (extendable)",
+        "model_year": 2017,
+        "in_service_years": 9,
+        "est_replacement_value_usd": 10800,
+        "last_dot_inspection": "2026-01-22"
+      },
+      "damage_description": "Right-rear tire is flat and the sidewall shows exposed cords. Driver noticed it at the gate before dispatch. Rest of the unit looks fine.",
+      "incident_context": "Road hazard / gradual wear; caught at pre-dispatch inspection.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 5,
+            "condition": "ok"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 1,
+            "condition": "exposed_cords"
+          }
+        ],
+        "brakes_defective_pct": 0,
+        "required_lamps_inoperative": [],
+        "frame_crack": false,
+        "suspension_defect": false,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": false,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false
+      },
+      "reporter_confidence": "high"
+    },
+    {
+      "report_id": "DMG-2026-0003",
+      "received_at": "2026-07-01T13:05:00Z",
+      "depot": {
+        "code": "NFK-01",
+        "name": "Norfolk Marine Terminal Pool",
+        "city_state": "Norfolk, VA"
+      },
+      "reported_by": {
+        "name": "Raymond Choi",
+        "role": "yard mechanic"
+      },
+      "chassis": {
+        "id": "DCLZ 415620",
+        "type": "40' tandem",
+        "model_year": 2018,
+        "in_service_years": 8,
+        "est_replacement_value_usd": 11500,
+        "last_dot_inspection": "2025-11-30"
+      },
+      "damage_description": "Brakes grabbing unevenly. Adjustment check shows two of the four brakes out of adjustment beyond spec. Linings look serviceable, just needs adjustment/service.",
+      "incident_context": "Flagged during routine return inspection.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 7,
+            "condition": "ok"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 7,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 6,
+            "condition": "ok"
+          }
+        ],
+        "brakes_defective_pct": 50,
+        "required_lamps_inoperative": [],
+        "frame_crack": false,
+        "suspension_defect": false,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": false,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false
+      },
+      "reporter_confidence": "high"
+    },
+    {
+      "report_id": "DMG-2026-0004",
+      "received_at": "2026-07-02T07:40:00Z",
+      "depot": {
+        "code": "CHI-03",
+        "name": "Chicago Corwith Rail Ramp Pool",
+        "city_state": "Chicago, IL"
+      },
+      "reported_by": {
+        "name": "Anthony Russo",
+        "role": "lead mechanic"
+      },
+      "chassis": {
+        "id": "DCLZ 271094",
+        "type": "40' tandem",
+        "model_year": 2009,
+        "in_service_years": 17,
+        "est_replacement_value_usd": 6500,
+        "last_dot_inspection": "2025-08-19"
+      },
+      "damage_description": "Crack running through the main frame rail near the rear bolster. Looks like it has been propagating for a while. This is structural, not surface rust.",
+      "incident_context": "Discovered during teardown after driver reported chassis 'flexing' under load.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 5,
+            "condition": "ok"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 5,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 4,
+            "condition": "ok"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 4,
+            "condition": "ok"
+          }
+        ],
+        "brakes_defective_pct": 0,
+        "required_lamps_inoperative": [],
+        "frame_crack": true,
+        "suspension_defect": false,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": false,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false
+      },
+      "reporter_confidence": "high"
+    },
+    {
+      "report_id": "DMG-2026-0005",
+      "received_at": "2026-07-02T09:18:00Z",
+      "depot": {
+        "code": "MEM-01",
+        "name": "Memphis Intermodal Pool",
+        "city_state": "Memphis, TN"
+      },
+      "reported_by": {
+        "name": "Kayla Simmons",
+        "role": "driver"
+      },
+      "chassis": {
+        "id": "DCLZ 409877",
+        "type": "40' tandem",
+        "model_year": 2016,
+        "in_service_years": 10,
+        "est_replacement_value_usd": 10200,
+        "last_dot_inspection": "2026-02-05"
+      },
+      "damage_description": "Chassis 'feels loose' and there is an intermittent clunk near the rear suspension when loaded, especially over bumps. Mechanic did a walk-around and could not find anything visibly wrong. No obvious broken parts.",
+      "incident_context": "Driver complaint on return; no visible defect confirmed on inspection.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 7,
+            "condition": "ok"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 7,
+            "condition": "ok"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 6,
+            "condition": "ok"
+          }
+        ],
+        "brakes_defective_pct": 0,
+        "required_lamps_inoperative": [],
+        "frame_crack": false,
+        "suspension_defect": false,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": false,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false
+      },
+      "reporter_confidence": "low"
+    },
+    {
+      "report_id": "DMG-2026-0006",
+      "received_at": "2026-07-02T14:52:00Z",
+      "depot": {
+        "code": "EWR-01",
+        "name": "Port Newark Chassis Pool",
+        "city_state": "Newark, NJ"
+      },
+      "reported_by": {
+        "name": "Victor Alvarez",
+        "role": "yard mechanic"
+      },
+      "chassis": {
+        "id": "DCLZ 393742",
+        "type": "20' slider",
+        "model_year": 2015,
+        "in_service_years": 11,
+        "est_replacement_value_usd": 9200,
+        "last_dot_inspection": "2026-04-11"
+      },
+      "damage_description": "Both the tail lamp and brake lamp on the driver side are dead. Looks like a wiring/ground issue at the rear harness. Bulbs and lenses intact.",
+      "incident_context": "Found during evening pre-dispatch check; unit needed for a night move.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 5,
+            "condition": "ok"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 5,
+            "condition": "ok"
+          }
+        ],
+        "brakes_defective_pct": 0,
+        "required_lamps_inoperative": [
+          "tail",
+          "brake"
+        ],
+        "frame_crack": false,
+        "suspension_defect": false,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": false,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false
+      },
+      "reporter_confidence": "high"
+    },
+    {
+      "report_id": "DMG-2026-0007",
+      "received_at": "2026-07-03T08:31:00Z",
+      "depot": {
+        "code": "DAL-02",
+        "name": "Dallas Intermodal Pool",
+        "city_state": "Dallas, TX"
+      },
+      "reported_by": {
+        "name": "Priya Nair",
+        "role": "lead mechanic"
+      },
+      "chassis": {
+        "id": "DCLZ 356201",
+        "type": "40' gooseneck",
+        "model_year": 2014,
+        "in_service_years": 12,
+        "est_replacement_value_usd": 8800,
+        "last_dot_inspection": "2025-12-09"
+      },
+      "damage_description": "Kingpin / upper coupler shows wear beyond the wear-limit gauge. Needs the upper coupler assembly serviced — beyond what we do here, this is a shop job.",
+      "incident_context": "Caught during annual DOT re-inspection prep.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 5,
+            "condition": "ok"
+          }
+        ],
+        "brakes_defective_pct": 0,
+        "required_lamps_inoperative": [],
+        "frame_crack": false,
+        "suspension_defect": false,
+        "kingpin_or_coupler_defect": true,
+        "airline_leak": false,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false
+      },
+      "reporter_confidence": "high"
+    },
+    {
+      "report_id": "DMG-2026-0008",
+      "received_at": "2026-07-03T11:26:00Z",
+      "depot": {
+        "code": "SAV-01",
+        "name": "Savannah Pooling Point",
+        "city_state": "Savannah, GA"
+      },
+      "reported_by": {
+        "name": "Marcus Bell",
+        "role": "yard mechanic"
+      },
+      "chassis": {
+        "id": "DCLZ 401559",
+        "type": "40' tandem",
+        "model_year": 2016,
+        "in_service_years": 10,
+        "est_replacement_value_usd": 10000,
+        "last_dot_inspection": "2026-01-30"
+      },
+      "damage_description": "Multiple items: three tires under the legal minimum, a chafed brake airline that is leaking, and a clearance lamp out on the passenger side. Individually small, but it adds up.",
+      "incident_context": "Return-to-pool inspection after a long dedicated haul.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 1,
+            "condition": "worn"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 2,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 1,
+            "condition": "worn"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 1,
+            "condition": "worn"
+          }
+        ],
+        "brakes_defective_pct": 0,
+        "required_lamps_inoperative": [
+          "clearance"
+        ],
+        "frame_crack": false,
+        "suspension_defect": false,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": true,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false
+      },
+      "reporter_confidence": "high"
+    },
+    {
+      "report_id": "DMG-2026-0009",
+      "received_at": "2026-07-03T15:44:00Z",
+      "depot": {
+        "code": "LGB-01",
+        "name": "Long Beach Marine Pool",
+        "city_state": "Long Beach, CA"
+      },
+      "reported_by": {
+        "name": "Hector Delgado",
+        "role": "lead mechanic"
+      },
+      "chassis": {
+        "id": "DCLZ 322870",
+        "type": "40' tandem",
+        "model_year": 2012,
+        "in_service_years": 14,
+        "est_replacement_value_usd": 7800,
+        "last_dot_inspection": "2025-10-02"
+      },
+      "damage_description": "Significant collision damage after a yard tractor hit the chassis. Rear frame section is bent, the tandem suspension on the impact side is damaged, and the rear light bar is destroyed. This is a major repair.",
+      "incident_context": "Struck by a yard hostler at speed in the container stack.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 5,
+            "condition": "ok"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 5,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 4,
+            "condition": "ok"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 3,
+            "condition": "sidewall_bulge"
+          }
+        ],
+        "brakes_defective_pct": 0,
+        "required_lamps_inoperative": [
+          "tail",
+          "brake",
+          "turn",
+          "clearance"
+        ],
+        "frame_crack": true,
+        "suspension_defect": true,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": false,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false
+      },
+      "reporter_confidence": "high"
+    },
+    {
+      "report_id": "DMG-2026-0010",
+      "received_at": "2026-07-04T09:03:00Z",
+      "depot": {
+        "code": "BAL-01",
+        "name": "Baltimore Seagirt Pool",
+        "city_state": "Baltimore, MD"
+      },
+      "reported_by": {
+        "name": "Tara Whitfield",
+        "role": "yard mechanic"
+      },
+      "chassis": {
+        "id": "DCLZ 418003",
+        "type": "20' slider",
+        "model_year": 2020,
+        "in_service_years": 6,
+        "est_replacement_value_usd": 13000,
+        "last_dot_inspection": "2026-05-20"
+      },
+      "damage_description": "Torque check found two loose lug nuts on the left-rear hub. None broken or missing, studs are intact. Needs retorque and a re-check, otherwise the unit is clean.",
+      "incident_context": "Routine fastener check on return.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 9,
+            "condition": "ok"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 9,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 8,
+            "condition": "ok"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 8,
+            "condition": "ok"
+          }
+        ],
+        "brakes_defective_pct": 0,
+        "required_lamps_inoperative": [],
+        "frame_crack": false,
+        "suspension_defect": false,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": false,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false
+      },
+      "reporter_confidence": "high"
+    },
+    {
+      "report_id": "DMG-2026-0011",
+      "received_at": "2026-07-04T12:39:00Z",
+      "depot": {
+        "code": "KCK-01",
+        "name": "Kansas City Rail Pool",
+        "city_state": "Kansas City, KS"
+      },
+      "reported_by": {
+        "name": "Derrick Payne",
+        "role": "yard mechanic"
+      },
+      "chassis": {
+        "id": "DCLZ 367418",
+        "type": "40' tandem",
+        "model_year": 2015,
+        "in_service_years": 11,
+        "est_replacement_value_usd": 9400,
+        "last_dot_inspection": "2025-12-28"
+      },
+      "damage_description": "Broken leaf spring on the left tandem — two leaves are cracked through. Needs a spring pack replacement, which we send out. Everything else checks out.",
+      "incident_context": "Noticed sag on one corner; confirmed broken leaves on inspection.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 5,
+            "condition": "ok"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 5,
+            "condition": "ok"
+          }
+        ],
+        "brakes_defective_pct": 0,
+        "required_lamps_inoperative": [],
+        "frame_crack": false,
+        "suspension_defect": true,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": false,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false
+      },
+      "reporter_confidence": "high"
+    },
+    {
+      "report_id": "DMG-2026-0012",
+      "received_at": "2026-07-05T08:57:00Z",
+      "depot": {
+        "code": "HOU-01",
+        "name": "Houston Barbours Cut Pool",
+        "city_state": "Houston, TX"
+      },
+      "reported_by": {
+        "name": "Linda Vasquez",
+        "role": "lead mechanic"
+      },
+      "chassis": {
+        "id": "DCLZ 214335",
+        "type": "40' tandem",
+        "model_year": 2007,
+        "in_service_years": 19,
+        "est_replacement_value_usd": 4200,
+        "last_dot_inspection": "2025-09-15"
+      },
+      "damage_description": "Nothing dramatic, but the list is getting long for a 19-year-old unit: two tires under minimum, one axle with brakes out of adjustment, and general surface rust on the frame (no cracks). Fixable, but this chassis is near end of life and we keep seeing it.",
+      "incident_context": "Return-to-pool inspection; recurring maintenance history on this unit.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 1,
+            "condition": "worn"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 3,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 1,
+            "condition": "worn"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 4,
+            "condition": "ok"
+          }
+        ],
+        "brakes_defective_pct": 25,
+        "required_lamps_inoperative": [],
+        "frame_crack": false,
+        "suspension_defect": false,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": false,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false
+      },
+      "reporter_confidence": "medium"
+    },
+    {
+      "report_id": "DMG-2026-0013",
+      "received_at": "2026-07-05T13:22:00Z",
+      "depot": {
+        "code": "CHI-03",
+        "name": "Chicago Corwith Rail Ramp Pool",
+        "city_state": "Chicago, IL"
+      },
+      "reported_by": {
+        "name": "telematics-system",
+        "role": "automated fault feed"
+      },
+      "chassis": {
+        "id": "DCLZ 411288",
+        "type": "40' tandem",
+        "model_year": 2018,
+        "in_service_years": 8,
+        "est_replacement_value_usd": 11200,
+        "last_dot_inspection": "2026-03-01"
+      },
+      "damage_description": "Gate note says 'no visible damage, routine return, unit looks fine.' But the telematics feed for the same unit shows an active ABS fault code and repeated hard-braking events over the last two trips, and the mechanic notes the ABS warning lamp is illuminated. The written report and the sensor data disagree.",
+      "incident_context": "Conflicting inputs: manual gate report vs. automated fault feed.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 5,
+            "condition": "ok"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 5,
+            "condition": "ok"
+          }
+        ],
+        "brakes_defective_pct": 0,
+        "required_lamps_inoperative": [],
+        "frame_crack": false,
+        "suspension_defect": false,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": false,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false,
+        "abs_fault_active": true,
+        "abs_warning_lamp": true
+      },
+      "reporter_confidence": "low"
+    },
+    {
+      "report_id": "DMG-2026-0014",
+      "received_at": "2026-07-06T10:11:00Z",
+      "depot": {
+        "code": "OAK-01",
+        "name": "Oakland Marine Pool",
+        "city_state": "Oakland, CA"
+      },
+      "reported_by": {
+        "name": "Sam Whitaker",
+        "role": "yard mechanic"
+      },
+      "chassis": {
+        "id": "DCLZ 399460",
+        "type": "40' tandem",
+        "model_year": 2017,
+        "in_service_years": 9,
+        "est_replacement_value_usd": 10600,
+        "last_dot_inspection": "2026-02-18"
+      },
+      "damage_description": "Front-left twist lock is broken — it won't seat and lock a container. The chassis itself rolls fine and everything DOT-related checks out; it just can't safely carry a box until the twist lock is replaced. Twist-lock work is a shop job for us.",
+      "incident_context": "Container-securing hardware failure found during load prep.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 7,
+            "condition": "ok"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 7,
+            "condition": "ok"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 6,
+            "condition": "ok"
+          }
+        ],
+        "brakes_defective_pct": 0,
+        "required_lamps_inoperative": [],
+        "frame_crack": false,
+        "suspension_defect": false,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": false,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": true
+      },
+      "reporter_confidence": "high"
+    },
+    {
+      "report_id": "DMG-2026-0015",
+      "received_at": "2026-07-06T16:05:00Z",
+      "depot": {
+        "code": "LGB-01",
+        "name": "Long Beach Marine Pool",
+        "city_state": "Long Beach, CA"
+      },
+      "reported_by": {
+        "name": "Hector Delgado",
+        "role": "lead mechanic"
+      },
+      "chassis": {
+        "id": "DCLZ 298551",
+        "type": "40' tandem",
+        "model_year": 2010,
+        "in_service_years": 16,
+        "est_replacement_value_usd": 5600,
+        "last_dot_inspection": "2025-07-29"
+      },
+      "damage_description": "Chassis was in a yard fire. The wiring harness is burned out end to end, tires on one side are melted, and the suspension components on that side show heat damage. This is almost certainly a total loss, but flagging it for a call.",
+      "incident_context": "Adjacent equipment fire in the storage row; unit caught fire damage.",
+      "roadability_data": {
+        "tires": [
+          {
+            "position": "LF",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "RF",
+            "tread_32nds": 0,
+            "condition": "melted"
+          },
+          {
+            "position": "LR",
+            "tread_32nds": 6,
+            "condition": "ok"
+          },
+          {
+            "position": "RR",
+            "tread_32nds": 0,
+            "condition": "melted"
+          }
+        ],
+        "brakes_defective_pct": 100,
+        "required_lamps_inoperative": [
+          "tail",
+          "brake",
+          "turn",
+          "clearance",
+          "marker"
+        ],
+        "frame_crack": false,
+        "suspension_defect": true,
+        "kingpin_or_coupler_defect": false,
+        "airline_leak": true,
+        "wheel_or_fastener_defect": false,
+        "container_securing_defect": false
+      },
+      "reporter_confidence": "high"
+    }
+  ]
+}
