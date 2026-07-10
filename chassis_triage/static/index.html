@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:," />
+<title>DCLI Chassis Triage — Operator Console</title>
+<style>
+  :root {
+    --bg:#f8fafc; --panel:#ffffff; --border:#e2e8f0; --ink:#0f172a; --muted:#64748b;
+    --blue:#2563eb; --green:#16a34a; --amber:#d97706; --red:#dc2626; --violet:#7c3aed;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+         color:var(--ink); background:var(--bg); }
+  header { padding:14px 20px; border-bottom:1px solid var(--border); background:var(--panel);
+           display:flex; align-items:baseline; gap:12px; }
+  header h1 { font-size:16px; margin:0; }
+  header .sub { color:var(--muted); font-size:12px; }
+  header .mode { margin-left:auto; font-size:12px; color:var(--muted); }
+  header .mode b { color:var(--violet); }
+  .wrap { display:grid; grid-template-columns:280px 1fr; gap:16px; padding:16px; align-items:start; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:10px; }
+  .card h2 { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted);
+             margin:0; padding:10px 12px; border-bottom:1px solid var(--border); }
+  /* queue */
+  .queue { max-height:78vh; overflow:auto; }
+  .q-item { padding:9px 12px; border-bottom:1px solid var(--border); cursor:pointer; }
+  .q-item:hover { background:#f1f5f9; }
+  .q-item.sel { background:#eff6ff; box-shadow:inset 3px 0 0 var(--blue); }
+  .q-item .id { font-weight:600; }
+  .q-item .meta { color:var(--muted); font-size:12px; margin-top:2px; }
+  .q-item .desc { color:#334155; font-size:12px; margin-top:4px;
+                  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .badge { display:inline-block; font-size:10px; padding:1px 6px; border-radius:999px;
+           background:#f1f5f9; color:var(--muted); margin-left:6px; }
+  .badge.low { background:#fef2f2; color:var(--red); }
+  .badge.high { background:#f0fdf4; color:var(--green); }
+  /* main */
+  .status { padding:8px 12px; font-size:13px; color:var(--muted); border-bottom:1px solid var(--border); }
+  .status b { color:var(--ink); }
+  svg { width:100%; height:auto; display:block; }
+  .node rect { fill:#fff; stroke:#cbd5e1; stroke-width:1.5; }
+  .node .label { font-weight:600; fill:var(--ink); font-size:12.5px; }
+  .node .kind { font-size:9.5px; fill:#94a3b8; text-transform:uppercase; letter-spacing:.05em; }
+  .node .accent { }
+  .node[data-state="active"] rect { stroke:var(--blue); stroke-width:3; fill:#eff6ff; }
+  .node[data-state="done"]   rect { stroke:var(--green); fill:#f0fdf4; }
+  .node[data-state="planned"] rect { stroke:var(--amber); stroke-width:3; stroke-dasharray:5 3;
+                                      animation:pulse 1.1s infinite; }
+  .node[data-state="paused"] rect { stroke:var(--red); stroke-width:3; fill:#fef2f2;
+                                     animation:pulse 1.1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .edge { stroke:#cbd5e1; stroke-width:1.5; fill:none; }
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:0 16px 16px; }
+  .detail, .log { padding:12px; }
+  .detail .k { color:var(--muted); font-size:12px; }
+  .detail .v { font-weight:600; margin-bottom:8px; }
+  .bar { height:8px; background:#f1f5f9; border-radius:6px; overflow:hidden; margin:4px 0 10px; }
+  .bar > span { display:block; height:100%; background:var(--blue); }
+  .tools { font-size:12px; color:#334155; }
+  .tools .t { padding:6px 8px; background:#f8fafc; border:1px solid var(--border); border-radius:6px; margin-top:6px; }
+  .log { max-height:240px; overflow:auto; }
+  .log .row { padding:6px 4px; border-bottom:1px dashed var(--border); font-size:13px; }
+  .log .row .n { font-weight:600; }
+  .log .row .c { float:right; color:var(--muted); font-size:11px; }
+  /* review */
+  .review { grid-column:1 / -1; border:2px solid var(--amber); border-radius:10px; background:#fffbeb; padding:14px; }
+  .review.hidden { display:none; }
+  .review h2 { color:var(--amber); border:0; padding:0 0 8px; }
+  .review .reasons { color:#7c2d12; font-weight:600; margin-bottom:10px; }
+  .review .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px 20px; font-size:13px; margin-bottom:12px; }
+  .review .grid .k { color:var(--muted); }
+  .controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  select, input, button { font:inherit; }
+  select, input { padding:6px 8px; border:1px solid var(--border); border-radius:6px; }
+  input.note { flex:1; min-width:180px; }
+  button { padding:7px 14px; border-radius:6px; border:1px solid var(--border); cursor:pointer; background:#fff; }
+  button.primary { background:var(--green); color:#fff; border-color:var(--green); }
+  button.warn { background:var(--amber); color:#fff; border-color:var(--amber); }
+  .final { grid-column:1 / -1; padding:10px 14px; border-radius:8px; background:#f0fdf4;
+           border:1px solid var(--green); color:#14532d; font-weight:600; }
+  .final.hidden { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>DCLI Chassis Triage</h1>
+  <span class="sub">Operator Console · supervisor-routed multi-agent triage</span>
+  <span class="mode">LLM: <b id="mode">stub</b></span>
+</header>
+
+<div class="wrap">
+  <div class="card queue">
+    <h2>Incoming reports</h2>
+    <div id="queue"></div>
+  </div>
+
+  <div class="card">
+    <div class="status" id="status">Pick a report to triage &rarr;</div>
+    <svg id="graph" viewBox="0 0 760 380" role="img" aria-label="triage graph">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#cbd5e1"/>
+        </marker>
+      </defs>
+      <g id="edges"></g>
+      <g id="nodes"></g>
+    </svg>
+
+    <div class="cols">
+      <div class="card detail">
+        <h2>Active step</h2>
+        <div id="detail" style="padding-top:8px;">
+          <span class="k">idle</span>
+        </div>
+      </div>
+      <div class="card log">
+        <h2>Step log</h2>
+        <div id="log"></div>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div id="review" class="review hidden"></div>
+      <div id="final" class="final hidden"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const POS = {
+  supervisor:  {x:314, y:20,  label:"Supervisor",        kind:"router"},
+  assessor:    {x:40,  y:150, label:"Damage Assessor",   kind:"agent"},
+  roadability: {x:216, y:150, label:"Roadability",       kind:"rules"},
+  cost:        {x:392, y:150, label:"Cost Estimator",    kind:"rules"},
+  disposition: {x:568, y:150, label:"Disposition",       kind:"rules"},
+  human_review:{x:220, y:290, label:"Human Review",      kind:"human"},
+  resolve:     {x:470, y:290, label:"Resolve",           kind:"terminal"},
+};
+const KIND_COLOR = {router:"#64748b", agent:"#7c3aed", rules:"#2563eb", human:"#d97706", terminal:"#059669"};
+const NW=150, NH=54;
+const center = id => ({x:POS[id].x+NW/2, y:POS[id].y+NH/2});
+
+let THREAD=null, QUEUE=[], PUMP=null, lastActive=null, viaHuman=false;
+
+const $ = s => document.querySelector(s);
+const el = (tag, attrs={}, ns=false) => {
+  const n = ns ? document.createElementNS("http://www.w3.org/2000/svg", tag) : document.createElement(tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  return n;
+};
+
+async function init(){
+  const g = await (await fetch("/graph")).json();
+  drawGraph(g);
+  const reports = await (await fetch("/reports")).json();
+  drawQueue(reports);
+}
+
+function drawGraph(g){
+  const edges = $("#edges"), nodes = $("#nodes");
+  // stop an edge at the node's boundary (not its centre) so the arrowhead stays visible
+  const bnd = (c, dx, dy, hw, hh) => {
+    const sx = dx === 0 ? Infinity : hw / Math.abs(dx);
+    const sy = dy === 0 ? Infinity : hh / Math.abs(dy);
+    const s = Math.min(sx, sy);
+    return {x: c.x + dx * s, y: c.y + dy * s};
+  };
+  // draw supervisor's outgoing edges + human_review->resolve (skip the return edges for clarity)
+  g.edges.filter(e => e.target !== "supervisor" && POS[e.source] && POS[e.target]).forEach(e => {
+    const a=center(e.source), b=center(e.target);
+    const dx=b.x-a.x, dy=b.y-a.y;
+    const p1 = bnd(a,  dx,  dy, NW/2,     NH/2);
+    const p2 = bnd(b, -dx, -dy, NW/2 + 7, NH/2 + 7);
+    edges.appendChild(el("line",{class:"edge", x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y, "marker-end":"url(#arrow)"}, true));
+  });
+  g.nodes.forEach(n => {
+    const p = POS[n.id]; if(!p) return;
+    const grp = el("g",{class:"node","data-id":n.id,"data-state":"idle"}, true);
+    grp.appendChild(el("rect",{x:p.x,y:p.y,width:NW,height:NH,rx:9}, true));
+    grp.appendChild(el("rect",{class:"accent",x:p.x,y:p.y,width:5,height:NH,rx:2,fill:KIND_COLOR[p.kind]||"#94a3b8"}, true));
+    const kind = el("text",{class:"kind",x:p.x+16,y:p.y+18}, true); kind.textContent=p.kind;
+    const label= el("text",{class:"label",x:p.x+16,y:p.y+38}, true); label.textContent=p.label;
+    grp.appendChild(kind); grp.appendChild(label);
+    nodes.appendChild(grp);
+  });
+}
+
+function drawQueue(reports){
+  const q = $("#queue");
+  reports.forEach(r => {
+    const item = el("div",{class:"q-item","data-id":r.report_id});
+    const conf = r.reporter_confidence;
+    item.innerHTML = `<div class="id">${r.report_id.replace("DMG-2026-","#")}
+        <span class="badge ${conf}">${conf} conf</span></div>
+      <div class="meta">${r.depot} · ${r.chassis_id} · ${r.in_service_years}y</div>
+      <div class="desc">${r.damage_description}</div>`;
+    item.onclick = () => { document.querySelectorAll(".q-item").forEach(x=>x.classList.remove("sel"));
+                           item.classList.add("sel"); startRun(r.report_id); };
+    q.appendChild(item);
+  });
+}
+
+function setState(id, state){ const n = document.querySelector(`.node[data-id="${id}"]`); if(n) n.setAttribute("data-state", state); }
+function resetNodes(){ Object.keys(POS).forEach(id => setState(id,"idle")); lastActive=null; }
+
+function startRun(reportId){
+  if(PUMP){ clearTimeout(PUMP); PUMP=null; } QUEUE=[]; viaHuman=false;
+  resetNodes(); $("#log").innerHTML=""; $("#detail").innerHTML='<span class="k">running…</span>';
+  $("#review").classList.add("hidden"); $("#final").classList.add("hidden");
+  THREAD = "t-" + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  $("#status").innerHTML = `Triaging <b>${reportId}</b> …`;
+  const es = new EventSource(`/triage/stream?report_id=${reportId}&thread_id=${THREAD}`);
+  es.addEventListener("start", e => { THREAD = JSON.parse(e.data).thread_id; });
+  es.addEventListener("step",  e => { QUEUE.push(JSON.parse(e.data)); pump(); });
+  es.addEventListener("complete", e => { QUEUE.push({__complete:JSON.parse(e.data)}); pump(); es.close(); });
+  es.onerror = () => es.close();
+}
+
+function pump(){
+  if(PUMP) return;
+  const tick = () => {
+    if(!QUEUE.length){ PUMP=null; return; }
+    const item = QUEUE.shift();
+    if(item.__complete) onComplete(item.__complete); else onStep(item);
+    PUMP = setTimeout(tick, 680);
+  };
+  PUMP = setTimeout(tick, 0);
+}
+
+function onStep(s){
+  if(lastActive && lastActive!==s.node) setState(lastActive,"done");
+  setState(s.node,"active"); lastActive = s.node;
+  if(s.planned_next) setState(s.planned_next,"planned");
+  renderDetail(s); appendLog(s);
+}
+
+function renderDetail(s){
+  const conf = (s.confidence==null)?1:s.confidence;
+  const tools = (s.tool_calls||[]).map(t =>
+    `<div class="t"><b>${t.tool}</b> ${t.args && Object.keys(t.args).length? JSON.stringify(t.args):""}
+      <div style="color:#64748b">${typeof t.result==="string"?t.result:JSON.stringify(t.result)}</div></div>`).join("");
+  $("#detail").innerHTML = `
+    <div class="k">node</div><div class="v">${s.node}</div>
+    <div class="k">decision</div><div class="v">${s.decision ?? "—"}</div>
+    <div class="k">confidence</div>
+    <div class="bar"><span style="width:${Math.round(conf*100)}%"></span></div>
+    ${tools? `<div class="k">tool calls</div><div class="tools">${tools}</div>`:""}`;
+}
+
+function appendLog(s){
+  const row = el("div",{class:"row"});
+  const c = (s.confidence==null)?"":`<span class="c">conf ${s.confidence}</span>`;
+  row.innerHTML = `<span class="n">${s.node}</span> ${c}<div style="color:#475569">${s.decision ?? ""}</div>`;
+  $("#log").appendChild(row); $("#log").scrollTop = $("#log").scrollHeight;
+}
+
+function onComplete(c){
+  if(lastActive) setState(lastActive,"done");
+  if(c.terminal === "human_review"){
+    setState("human_review","paused");
+    $("#status").innerHTML = `Paused for <b>human review</b>`;
+    renderReview(c.state);
+  } else {
+    setState("resolve","done");
+    const d = c.state.disposition ? c.state.disposition.recommendation : "resolved";
+    const how = viaHuman ? "Resolved by reviewer" : "Auto-resolved";
+    $("#status").innerHTML = `${how}: <b>${d}</b>`;
+    showFinal(`${how} · disposition: ${d}`);
+  }
+}
+
+function renderReview(st){
+  const reasons = (st.routing_rationale||"").replace("pause for human — ","");
+  const a = st.assessment||{}, r = st.roadability||{}, cost = st.cost, disp = st.disposition;
+  const hasDisp = !!disp;
+  const grid = `
+    <div class="grid">
+      <div><span class="k">severity</span> ${a.severity_band ?? "—"}</div>
+      <div><span class="k">assessor conf</span> ${a.decision_confidence ?? "—"}</div>
+      <div><span class="k">roadable</span> ${r.roadable? "yes":"no"} · fit ${r.fit_for_service? "yes":"no"}</div>
+      <div><span class="k">advisory</span> ${(r.advisory_flags||[]).join(", ")||"—"}</div>
+      <div><span class="k">cost</span> ${cost? "$"+cost.amount_usd.toLocaleString():"— (skipped)"}</div>
+      <div><span class="k">auto-disposition</span> ${hasDisp? disp.recommendation:"— (routed early)"}</div>
+    </div>`;
+  const options = ["repair_on_site","vendor","retire"]
+    .map(o => `<option value="${o}" ${hasDisp&&disp.recommendation===o?"selected":""}>${o}</option>`).join("");
+  const controls = hasDisp
+    ? `<button class="primary" onclick="decide('approve')">Approve ${disp.recommendation}</button>
+       <span style="color:#64748b">or override →</span>
+       <select id="disp">${options}</select>
+       <button class="warn" onclick="decide('override')">Override</button>`
+    : `<span style="color:#7c2d12">No auto-disposition (routed early). Set disposition:</span>
+       <select id="disp">${options}</select>
+       <button class="warn" onclick="decide('override')">Submit decision</button>`;
+  $("#review").innerHTML = `<h2>⚠ Human review required</h2>
+    <div class="reasons">${reasons}</div>${grid}
+    <div class="controls"><input class="note" id="note" placeholder="reviewer note (optional)"/>${controls}</div>`;
+  $("#review").classList.remove("hidden");
+}
+
+async function decide(action){
+  const dispSel = $("#disp");
+  const body = { action, note: ($("#note")?.value)||"" };
+  if(action==="override" && dispSel) body.disposition = dispSel.value;
+  viaHuman = true;
+  $("#review").classList.add("hidden");
+  const res = await (await fetch(`/triage/${THREAD}/resume`, {
+    method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body)
+  })).json();
+  setState("human_review","active");
+  res.steps.forEach(s => QUEUE.push(s));
+  QUEUE.push({__complete:{terminal:res.terminal, state:res.state}});
+  pump();
+}
+
+function showFinal(msg){ const f=$("#final"); f.textContent=msg; f.classList.remove("hidden"); }
+
+init();
+</script>
+</body>
+</html>

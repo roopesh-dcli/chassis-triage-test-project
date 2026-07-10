@@ -4,9 +4,10 @@ from __future__ import annotations
 import os
 
 from .base import Assessor
+from .bedrock import BedrockAssessor
 from .stub import StubAssessor
 
-__all__ = ["Assessor", "StubAssessor", "get_assessor"]
+__all__ = ["Assessor", "BedrockAssessor", "StubAssessor", "get_assessor"]
 
 
 def get_assessor(mode: str | None = None) -> Assessor:
@@ -15,11 +16,5 @@ def get_assessor(mode: str | None = None) -> Assessor:
     if mode == "stub":
         return StubAssessor()
     if mode == "bedrock":
-        try:
-            from .bedrock import BedrockAssessor
-        except ImportError as e:
-            raise NotImplementedError(
-                "Bedrock assessor is added in step 6; run with LLM_MODE=stub for now."
-            ) from e
         return BedrockAssessor()
     raise ValueError(f"unknown LLM_MODE: {mode!r} (expected 'stub' or 'bedrock')")

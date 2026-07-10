@@ -15,6 +15,7 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "sse-starlette>=2.1",
     "aiosqlite>=0.20",
+    "anthropic[bedrock]>=0.116,<1",
 ]
 
 [project.optional-dependencies]
@@ -26,3 +27,6 @@ include = ["chassis_triage*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "integration: makes an opt-in live AWS Bedrock request",
+]
