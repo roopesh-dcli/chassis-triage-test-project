@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import operator
@@ -40,8 +39,20 @@ def _report(state: TriageState) -> Report:
     return Report.model_validate(state["report"])
 
 
-def _hist(node: str, decision: str, confidence: float, tool_calls: list | None = None) -> dict:
-    return {"node": node, "decision": decision, "confidence": confidence, "tool_calls": tool_calls or []}
+def _hist(
+    node: str,
+    decision: str,
+    confidence: float,
+    tool_calls: list | None = None,
+    rationale: str = "",
+) -> dict:
+    return {
+        "node": node,
+        "decision": decision,
+        "confidence": confidence,
+        "rationale": rationale,
+        "tool_calls": tool_calls or [],
+    }
 
 
 # --- Human-review triggers (each a principled reason, PLAN.md §3.5) -------------
@@ -119,7 +130,7 @@ def build_graph(assessor: Assessor | None = None, checkpointer=None):
                 "routing_rationale": rationale,
                 "planned_next": target,
                 "step_count": step,
-                "history": [_hist("supervisor", f"-> {target}: {rationale}", 1.0)],
+                "history": [_hist("supervisor", f"-> {target}: {rationale}", 1.0, rationale=rationale)],
             },
         )
 
@@ -128,7 +139,7 @@ def build_graph(assessor: Assessor | None = None, checkpointer=None):
         return {
             "assessment": a.model_dump(),
             "history": [_hist("assessor", f"severity={a.severity_band}, conf={a.decision_confidence}",
-                              a.decision_confidence, a.tool_calls)],
+                              a.decision_confidence, a.tool_calls, a.rationale)],
         }
 
     def roadability_node(state: TriageState) -> dict:
@@ -142,7 +153,9 @@ def build_graph(assessor: Assessor | None = None, checkpointer=None):
         return {
             "roadability": r.model_dump(),
             "history": [_hist("roadability", decision, r.confidence,
-                              [{"tool": "fmcsa_oos_rules", "args": {}, "result": r.oos_reasons or "clean"}])],
+                              [{"tool": "fmcsa_oos_rules", "args": {}, "result": r.oos_reasons or "clean"}],
+                              "; ".join(r.oos_reasons or r.advisory_flags)
+                              or "No deterministic out-of-service or advisory condition found.")],
         }
 
     def cost_node(state: TriageState) -> dict:
@@ -151,7 +164,8 @@ def build_graph(assessor: Assessor | None = None, checkpointer=None):
         return {
             "cost": c.model_dump(),
             "history": [_hist("cost", f"${c.amount_usd:,.0f}", c.confidence,
-                              [{"tool": "cost_book", "args": {}, "result": [li.model_dump() for li in c.line_items]}])],
+                              [{"tool": "cost_book", "args": {}, "result": [li.model_dump() for li in c.line_items]}],
+                              "; ".join(li.description for li in c.line_items))],
         }
 
     def disposition_node(state: TriageState) -> dict:
@@ -159,7 +173,8 @@ def build_graph(assessor: Assessor | None = None, checkpointer=None):
         cost = CostEstimate.model_validate(state["cost"])
         assess = Assessment.model_validate(state["assessment"])
         d = decide_disposition(_report(state), road, cost, assess)
-        return {"disposition": d.model_dump(), "history": [_hist("disposition", d.recommendation, d.confidence)]}
+        return {"disposition": d.model_dump(),
+                "history": [_hist("disposition", d.recommendation, d.confidence, rationale=d.rationale)]}
 
     def human_review_node(state: TriageState) -> dict:
         reasons = _pre_disposition_reasons(state)
@@ -185,12 +200,14 @@ def build_graph(assessor: Assessor | None = None, checkpointer=None):
                                   rationale=f"Human {status}: {decision.get('note', '')}".strip(),
                                   confidence=1.0)
         return {"review": review.model_dump(), "disposition": disposition.model_dump(),
-                "history": [_hist("human_review", f"{status} -> {rec}", 1.0)]}
+                "history": [_hist("human_review", f"{status} -> {rec}", 1.0,
+                                  rationale=f"Human {status}: {decision.get('note', '')}".strip())]}
 
     def resolve_node(state: TriageState) -> dict:
         d = state.get("disposition")
         outcome = d["recommendation"] if d else "unresolved"
-        return {"history": [_hist("resolve", f"final disposition: {outcome}", 1.0)]}
+        return {"history": [_hist("resolve", f"final disposition: {outcome}", 1.0,
+                                  rationale=(d or {}).get("rationale", ""))]}
 
     g = StateGraph(TriageState)
     g.add_node("supervisor", supervisor)

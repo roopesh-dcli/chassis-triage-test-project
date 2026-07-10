@@ -244,6 +244,7 @@ function onStep(s){
 
 function renderDetail(s){
   const conf = (s.confidence==null)?1:s.confidence;
+  const why = s.rationale ? `<div class="k">why</div><div class="v">${s.rationale}</div>` : "";
   const tools = (s.tool_calls||[]).map(t =>
     `<div class="t"><b>${t.tool}</b> ${t.args && Object.keys(t.args).length? JSON.stringify(t.args):""}
       <div style="color:#64748b">${typeof t.result==="string"?t.result:JSON.stringify(t.result)}</div></div>`).join("");
@@ -252,6 +253,7 @@ function renderDetail(s){
     <div class="k">decision</div><div class="v">${s.decision ?? "—"}</div>
     <div class="k">confidence</div>
     <div class="bar"><span style="width:${Math.round(conf*100)}%"></span></div>
+    ${why}
     ${tools? `<div class="k">tool calls</div><div class="tools">${tools}</div>`:""}`;
 }
 

@@ -84,6 +84,24 @@ async def test_stream_auto_case():
         assert "assessor" in step_nodes and "resolve" in step_nodes
         # planned_next surfaced during the run (the dashboard's "what's next")
         assert any(e["data"].get("planned_next") for e in events if e["event"] == "step")
+        # The dashboard must explain decisions, not merely show their labels.
+        assessor_step = next(e["data"] for e in events if e["event"] == "step"
+                             and e["data"]["node"] == "assessor")
+        disposition_step = next(e["data"] for e in events if e["event"] == "step"
+                                and e["data"]["node"] == "disposition")
+        assert assessor_step["rationale"]
+        assert disposition_step["rationale"]
+
+
+async def test_stream_emits_structured_node_events(monkeypatch):
+    emitted = []
+    monkeypatch.setattr("chassis_triage.api.emit_event", lambda event, **fields: emitted.append((event, fields)))
+    async with make_client() as c:
+        await c.get("/triage/stream", params={"report_id": "DMG-2026-0001", "thread_id": "logs-1"})
+
+    steps = [fields for event, fields in emitted if event == "triage_step"]
+    assert {step["node"] for step in steps} >= {"assessor", "roadability", "cost", "disposition"}
+    assert all(step["thread_id"] == "logs-1" and "elapsed_ms" in step for step in steps)
 
 
 async def test_stream_human_case_pauses():

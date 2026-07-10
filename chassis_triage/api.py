@@ -15,6 +15,7 @@ import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+from time import perf_counter
 from typing import Literal, Optional
 from uuid import uuid4
 
@@ -29,6 +30,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 from .data import load_reports, load_reports_by_id
 from .graph import build_graph, initial_state
+from .observability import emit_event
 from .state import Report
 
 # Static topology for the dashboard graph view (the supervisor routes dynamically via
@@ -85,6 +87,7 @@ def _step_event(node: str, upd: dict) -> dict:
         "node": node,
         "decision": entry.get("decision"),
         "confidence": entry.get("confidence"),
+        "rationale": entry.get("rationale") or upd.get("routing_rationale"),
         "tool_calls": entry.get("tool_calls", []),
         "planned_next": upd.get("planned_next"),        # supervisor only
         "routing_rationale": upd.get("routing_rationale"),
@@ -93,11 +96,28 @@ def _step_event(node: str, upd: dict) -> dict:
 
 async def _astep(graph, config, graph_input):
     """Async-stream one graph run, yielding a step event per executed node."""
+    started = perf_counter()
+    thread_id = config.get("configurable", {}).get("thread_id")
+    report_id = graph_input.get("report", {}).get("report_id") if isinstance(graph_input, dict) else None
     async for chunk in graph.astream(graph_input, config, stream_mode="updates"):
         for node, upd in chunk.items():
             if node == "__interrupt__":
                 continue
-            yield _step_event(node, upd)
+            step = _step_event(node, upd)
+            now = perf_counter()
+            emit_event(
+                "triage_step",
+                thread_id=thread_id,
+                report_id=report_id,
+                node=step["node"],
+                decision=step["decision"],
+                confidence=step["confidence"],
+                rationale=step["rationale"],
+                tool_calls=step["tool_calls"],
+                elapsed_ms=round((now - started) * 1000, 1),
+            )
+            started = now
+            yield step
 
 
 # Predictable state shape for the dashboard — keys always present, even when a node was
@@ -193,6 +213,12 @@ def _configure(app: FastAPI) -> None:
         steps = [s async for s in _astep(graph, config, Command(resume=decision.model_dump()))]
         result = await _terminal(graph, config)
         result["steps"] = steps
+        emit_event(
+            "human_review_decision",
+            thread_id=thread_id,
+            action=decision.action,
+            disposition=decision.disposition,
+        )
         return result
 
     @app.get("/triage/{thread_id}/state")
