@@ -27,7 +27,8 @@ htmlcov/
 *.sqlite
 *.sqlite3
 *.db
-
+triage.sqlite-shm
+triage.sqlite-wal
 
 node_modules/
 dashboard/dist/
