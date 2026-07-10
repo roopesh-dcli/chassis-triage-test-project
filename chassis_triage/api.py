@@ -1,4 +1,4 @@
-"""FastAPI backend — HTTP + SSE around the triage graph.
+"""FastAPI backend — HTTP + SSE around the triage graph (PLAN.md §6).
 
 Endpoints:
   GET  /reports                     list the 15 reports (dashboard queue)
@@ -14,14 +14,18 @@ from __future__ import annotations
 import json
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Literal, Optional
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from langgraph.types import Command
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 from .data import load_reports, load_reports_by_id
 from .graph import build_graph, initial_state
@@ -141,9 +145,13 @@ def _configure(app: FastAPI) -> None:
         CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
     )
 
+    @app.get("/")
+    def dashboard():
+        return FileResponse(STATIC_DIR / "index.html")
+
     @app.get("/health")
     async def health():
-        return {"ok": True}
+        return {"ok": True, "llm_mode": os.getenv("LLM_MODE", "stub").lower()}
 
     @app.get("/reports")
     def reports():

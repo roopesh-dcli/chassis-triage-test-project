@@ -152,6 +152,12 @@ const el = (tag, attrs={}, ns=false) => {
 };
 
 async function init(){
+  try {
+    const health = await (await fetch("/health")).json();
+    $("#mode").textContent = health.llm_mode || "stub";
+  } catch (_) {
+    // Keep the safe default label if the health check is temporarily unavailable.
+  }
   const g = await (await fetch("/graph")).json();
   drawGraph(g);
   const reports = await (await fetch("/reports")).json();

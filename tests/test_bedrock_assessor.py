@@ -9,7 +9,9 @@ import pytest
 
 from chassis_triage.assessor import BedrockAssessor, get_assessor
 from chassis_triage.assessor.bedrock import (
+    ASSESSMENT_TOOL,
     DEFAULT_BEDROCK_MODEL_ID,
+    TOOL_NAME,
     BedrockAssessmentOutput,
 )
 from chassis_triage.data import load_reports_by_id
@@ -19,18 +21,27 @@ REPORT = load_reports_by_id()["DMG-2026-0005"]
 
 
 class _FakeMessages:
-    def __init__(self, parsed_output) -> None:
-        self.parsed_output = parsed_output
+    """Mimics the shape Bedrock actually returns: a forced tool_use content block."""
+
+    def __init__(self, tool_input, *, stop_reason="tool_use", emit_tool_use=True) -> None:
+        self._tool_input = tool_input
+        self._stop_reason = stop_reason
+        self._emit_tool_use = emit_tool_use
         self.request: dict | None = None
 
-    def parse(self, **kwargs):
+    def create(self, **kwargs):
         self.request = kwargs
-        return SimpleNamespace(parsed_output=self.parsed_output)
+        content = []
+        if self._emit_tool_use:
+            content.append(
+                SimpleNamespace(type="tool_use", name=TOOL_NAME, input=self._tool_input)
+            )
+        return SimpleNamespace(content=content, stop_reason=self._stop_reason)
 
 
 class _FakeClient:
-    def __init__(self, parsed_output) -> None:
-        self.messages = _FakeMessages(parsed_output)
+    def __init__(self, tool_input, **kwargs) -> None:
+        self.messages = _FakeMessages(tool_input, **kwargs)
 
 
 def _wire_output(**overrides) -> dict:
@@ -50,9 +61,25 @@ def test_factory_selects_bedrock_without_contacting_aws():
     assessor = get_assessor("bedrock")
     assert isinstance(assessor, BedrockAssessor)
     assert assessor.model_id == DEFAULT_BEDROCK_MODEL_ID
+    assert DEFAULT_BEDROCK_MODEL_ID.startswith("anthropic.")  # Bedrock IDs are prefixed
 
 
-def test_bedrock_assessor_uses_structured_output_and_preserves_contract():
+def test_development_default_is_the_verified_low_cost_model():
+    """Sonnet 5 passed forced-tool use; Sonnet 4.6 returned 404 on this endpoint."""
+    assert DEFAULT_BEDROCK_MODEL_ID == "anthropic.claude-sonnet-5"
+
+
+def test_tool_schema_matches_the_wire_model():
+    """Guards against the schema and the Pydantic model drifting apart."""
+    assert ASSESSMENT_TOOL["input_schema"]["required"] == list(BedrockAssessmentOutput.model_fields)
+    assert ASSESSMENT_TOOL["input_schema"]["additionalProperties"] is False
+    # Bedrock rejects `strict`; numeric bounds are enforced client-side, not on the wire.
+    assert "strict" not in ASSESSMENT_TOOL
+    conf = ASSESSMENT_TOOL["input_schema"]["properties"]["decision_confidence"]
+    assert "minimum" not in conf and "maximum" not in conf
+
+
+def test_bedrock_assessor_forces_the_tool_and_preserves_contract():
     client = _FakeClient(_wire_output())
     assessment = BedrockAssessor(client=client).assess(REPORT)
 
@@ -66,15 +93,25 @@ def test_bedrock_assessor_uses_structured_output_and_preserves_contract():
     request = client.messages.request
     assert request is not None
     assert request["model"] == DEFAULT_BEDROCK_MODEL_ID
-    assert request["output_format"] is BedrockAssessmentOutput
-    assert request["temperature"] == 0
+    assert request["tools"] == [ASSESSMENT_TOOL]
+    assert request["tool_choice"] == {"type": "tool", "name": TOOL_NAME}
+    # Sampling params are rejected (400) by current Claude models — never send them.
+    assert "temperature" not in request
+    assert "top_p" not in request
+    # Constrained decoding is unavailable on this surface; we must not send it.
+    assert "output_config" not in request
 
-    # The LLM receives narrative evidence, not an ID it could overfit or the
-    # structured OOS data reserved for the deterministic roadability node.
-    payload = json.loads(request["messages"][0]["content"])
+
+def test_language_boundary_is_narrative_only():
+    """The model sees narrative evidence — never an ID it could overfit, never the OOS data."""
+    client = _FakeClient(_wire_output())
+    BedrockAssessor(client=client).assess(REPORT)
+    content = client.messages.request["messages"][0]["content"]
+
+    payload = json.loads(content)
     assert set(payload) == {"damage_description", "incident_context", "reporter_confidence"}
-    assert "report_id" not in request["messages"][0]["content"]
-    assert "roadability_data" not in request["messages"][0]["content"]
+    for leak in ("report_id", "DMG-2026-0005", "roadability_data", "frame_crack", "DCLZ"):
+        assert leak not in content
 
 
 def test_final_domain_model_enforces_confidence_bound():
@@ -83,19 +120,31 @@ def test_final_domain_model_enforces_confidence_bound():
         BedrockAssessor(client=client).assess(REPORT)
 
 
-def test_missing_structured_output_is_a_clear_error():
-    client = _FakeClient(None)
-    with pytest.raises(RuntimeError, match="no parsed structured"):
+def test_unknown_field_from_model_is_rejected():
+    client = _FakeClient(_wire_output(sneaky_extra="nope"))
+    with pytest.raises(ValueError, match="Assessment contract"):
+        BedrockAssessor(client=client).assess(REPORT)
+
+
+def test_missing_tool_use_block_is_a_clear_error():
+    client = _FakeClient(None, emit_tool_use=False, stop_reason="end_turn")
+    with pytest.raises(RuntimeError, match="no tool_use"):
+        BedrockAssessor(client=client).assess(REPORT)
+
+
+def test_refusal_is_a_clear_error():
+    client = _FakeClient(None, emit_tool_use=False, stop_reason="refusal")
+    with pytest.raises(RuntimeError, match="refused"):
         BedrockAssessor(client=client).assess(REPORT)
 
 
 @pytest.mark.integration
 @pytest.mark.skipif(
     os.getenv("RUN_BEDROCK_INTEGRATION") != "1",
-    reason="set RUN_BEDROCK_INTEGRATION=1 with a valid AWS SSO session to call Bedrock",
+    reason="set RUN_BEDROCK_INTEGRATION=1 with valid AWS credentials to call Bedrock",
 )
 def test_live_bedrock_marks_end_of_life_case_for_review():
-    """Small live rubric check; use BEDROCK_MODEL_ID=...opus-4-8 for final validation."""
+    """#0012 is the one case with no deterministic backstop — it rides entirely on the model."""
     assessment = BedrockAssessor().assess(load_reports_by_id()["DMG-2026-0012"])
     assert isinstance(assessment, Assessment)
     assert assessment.end_of_life_suspected is True

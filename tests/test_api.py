@@ -32,6 +32,20 @@ def parse_sse(text: str) -> list[dict]:
     return events
 
 
+async def test_dashboard_is_served_at_root():
+    async with make_client() as c:
+        response = await c.get("/")
+        assert response.status_code == 200
+        assert "DCLI Chassis Triage" in response.text
+
+
+async def test_health_reports_configured_llm_mode(monkeypatch):
+    monkeypatch.setenv("LLM_MODE", "bedrock")
+    async with make_client() as c:
+        response = await c.get("/health")
+        assert response.json() == {"ok": True, "llm_mode": "bedrock"}
+
+
 async def test_reports_list():
     async with make_client() as c:
         r = await c.get("/reports")
