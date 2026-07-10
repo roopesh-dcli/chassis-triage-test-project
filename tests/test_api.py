@@ -37,6 +37,7 @@ async def test_dashboard_is_served_at_root():
         response = await c.get("/")
         assert response.status_code == 200
         assert "DCLI Chassis Triage" in response.text
+        assert '<summary>Why?</summary>' in response.text
 
 
 async def test_health_reports_configured_llm_mode(monkeypatch):

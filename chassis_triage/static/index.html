@@ -64,6 +64,10 @@
   .log .row { padding:6px 4px; border-bottom:1px dashed var(--border); font-size:13px; }
   .log .row .n { font-weight:600; }
   .log .row .c { float:right; color:var(--muted); font-size:11px; }
+  .log .why { margin-top:4px; }
+  .log .why summary { display:inline-block; color:var(--blue); font-size:12px; cursor:pointer;
+                       font-weight:600; }
+  .log .why p { margin:4px 0 0; color:#475569; font-size:12px; }
   /* review */
   .review { grid-column:1 / -1; border:2px solid var(--amber); border-radius:10px; background:#fffbeb; padding:14px; }
   .review.hidden { display:none; }
@@ -260,7 +264,10 @@ function renderDetail(s){
 function appendLog(s){
   const row = el("div",{class:"row"});
   const c = (s.confidence==null)?"":`<span class="c">conf ${s.confidence}</span>`;
-  row.innerHTML = `<span class="n">${s.node}</span> ${c}<div style="color:#475569">${s.decision ?? ""}</div>`;
+  const why = s.rationale
+    ? `<details class="why"><summary>Why?</summary><p>${s.rationale}</p></details>`
+    : "";
+  row.innerHTML = `<span class="n">${s.node}</span> ${c}<div style="color:#475569">${s.decision ?? ""}</div>${why}`;
   $("#log").appendChild(row); $("#log").scrollTop = $("#log").scrollHeight;
 }
 
